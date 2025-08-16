@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>حالات ZEWEIL</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <style>
+    body {
+      background-color: #111;
+      color: white;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h2 {
+      color: #0f0;
+    }
+    #status-form {
+      display: flex;
+      flex-direction: column;
+      width: 90%;
+      max-width: 500px;
+      margin-bottom: 20px;
+      padding: 20px;
+      background: #1a1a1a;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    #status-form input, #status-form button {
+      padding: 10px;
+      margin: 5px 0;
+      border: none;
+      border-radius: 5px;
+    }
+    #status-form input {
+      background: #333;
+      color: white;
+    }
+    #status-form button {
+      background-color: #0f0;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    #statuses-container {
+      width: 90%;
+      max-width: 500px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .status-card {
+      background: #222;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      border-left: 5px solid #0f0;
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    .status-card .status-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .status-card .status-username {
+      font-weight: bold;
+      color: #0f0;
+      font-size: 1.1em;
+    }
+    .status-card .status-time {
+      font-size: 0.8em;
+      opacity: 0.7;
+    }
+    .status-card .status-content {
+      font-size: 1em;
+      line-height: 1.5;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <h2>حالات ℤ 𝔼 𝕎 𝔼 𝕀 𝕃</h2>
+
+  <div id="status-form">
+    <input type="text" id="username" placeholder="اسمك">
+    <input type="text" id="status-text" placeholder="ما الذي تفكر فيه؟">
+    <button onclick="postStatus()">نشر الحالة</button>
+  </div>
+
+  <div id="statuses-container">
+    </div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAlim9FOvDcMqTJWINoBCHk3k6DNXS-jTo",
+    authDomain: "zeweil-chat.firebaseapp.com",
+    databaseURL: "https://zeweil-chat-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "zeweil-chat",
+    storageBucket: "zeweil-chat.appspot.com",
+    messagingSenderId: "79843372176",
+    appId: "1:79843372176:web:ea511efffae60c2a6cfc15",
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // دالة لنشر حالة جديدة
+  function postStatus() {
+    const username = document.getElementById("username").value.trim();
+    const statusText = document.getElementById("status-text").value.trim();
+
+    if (!username || !statusText) {
+      alert("من فضلك أدخل اسمك وحالتك.");
+      return;
+    }
+
+    const now = Date.now();
+    // 24 ساعة = 24 * 60 * 60 * 1000 = 86400000 مللي ثانية
+    const expiryTime = now + 86400000; 
+
+    db.ref('statuses').push({
+      username: username,
+      text: statusText,
+      timestamp: now,
+      expiryTime: expiryTime
+    });
+
+    document.getElementById("status-text").value = "";
+  }
+
+  // دالة لعرض الحالات
+  function displayStatuses(key, data) {
+    // تحقق إذا كانت الحالة منتهية الصلاحية
+    if (Date.now() > data.expiryTime) {
+      // إذا كانت منتهية، قم بحذفها من قاعدة البيانات
+      db.ref(`statuses/${key}`).remove();
+      return;
+    }
+    
+    // منع إضافة الحالة أكثر من مرة
+    if (document.getElementById(key)) {
+      return;
+    }
+
+    const statusCard = document.createElement('div');
+    statusCard.id = key;
+    statusCard.className = 'status-card';
+    
+    const formattedDate = new Date(data.timestamp).toLocaleString();
+
+    statusCard.innerHTML = `
+      <div class="status-header">
+        <span class="status-username">${data.username}</span>
+        <span class="status-time">${formattedDate}</span>
+      </div>
+      <div class="status-content">${data.text}</div>
+    `;
+
+    document.getElementById("statuses-container").prepend(statusCard);
+  }
+
+  // الاستماع إلى التغييرات في قسم الحالات
+  db.ref('statuses').on('child_added', (snapshot) => {
+    displayStatuses(snapshot.key, snapshot.val());
+  });
+
+  db.ref('statuses').on('child_removed', (snapshot) => {
+    const element = document.getElementById(snapshot.key);
+    if (element) {
+      element.remove();
+    }
+  });
+
+</script>
+</body>
+</html>
